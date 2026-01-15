@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import ProjectCard from "../../components/ProjectCard";
+import { useEffect, useState } from "react";
 
 const projects = [
   {
@@ -19,20 +20,35 @@ const projects = [
 ];
 
 export default function ProjectsPage() {
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 700);
+    return () => clearTimeout(t);
+  }, []);
+
   return (
     <main className="container">
       <motion.h1
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        style={{ marginBottom: "24px" }}
+        style={{ marginBottom: "20px", fontSize: "28px" }}
       >
         Project Marketplace
       </motion.h1>
 
       <div className="grid">
-        {projects.map((p) => (
-          <ProjectCard key={p.id} project={p} />
-        ))}
+        {loading
+          ? Array.from({ length: 4 }).map((_, i) => (
+              <div
+                key={i}
+                className="card"
+                style={{ height: "180px", opacity: 0.6 }}
+              />
+            ))
+          : projects.map((p) => (
+              <ProjectCard key={p.id} project={p} />
+            ))}
       </div>
     </main>
   );
