@@ -4,7 +4,7 @@ import Footer from "../components/Footer";
 
 export const metadata = {
   title: "IRA – Student Project Marketplace",
-  description: "Build · Learn · Earn",
+  description: "Build · Learn · Earn"
 };
 
 export default function RootLayout({
