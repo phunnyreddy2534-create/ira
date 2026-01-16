@@ -35,7 +35,9 @@ export default function ProjectsPage() {
           ? Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="card" style={{ height: 180 }} />
             ))
-          : projects.map((p) => <ProjectCard key={p.id} project={p} />)}
+          : projects.map((p) => (
+              <ProjectCard key={p.id} project={p} />
+            ))}
       </div>
     </main>
   );
