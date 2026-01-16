@@ -6,21 +6,37 @@ import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 
 export default function AdminPage() {
-  const [user, setUser] = useState<any>(null);
+  const [allowed, setAllowed] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      const u = data.user;
-      if (!u || !u.email?.endsWith("@admin.com")) {
+    const checkAdmin = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (!user) {
+        router.push("/");
+        return;
+      }
+
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .single();
+
+      if (profile?.role !== "admin") {
         router.push("/");
       } else {
-        setUser(u);
+        setAllowed(true);
       }
-    });
+    };
+
+    checkAdmin();
   }, [router]);
 
-  if (!user) return null;
+  if (!allowed) return null;
 
   return (
     <main className="container">
@@ -33,13 +49,6 @@ export default function AdminPage() {
         <div className="card">⏳ Pending Approvals</div>
         <div className="card">📰 Manage News</div>
         <div className="card">👥 Users</div>
-      </div>
-
-      <div className="card" style={{ marginTop: "24px" }}>
-        <strong>Project Moderation (UI Ready)</strong>
-        <p style={{ color: "#9ca3af", marginTop: "8px" }}>
-          Approve, reject, edit, or delete projects here (logic comes next).
-        </p>
       </div>
     </main>
   );
