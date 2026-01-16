@@ -32,17 +32,33 @@ export default function UploadPage() {
 
   if (!role) return null;
 
+  const handleSubmit = async (e: any) => {
+    e.preventDefault();
+
+    const title = e.target.title.value;
+    const description = e.target.description.value;
+    const price = e.target.price.value;
+
+    const { data } = await supabase.auth.getSession();
+    const user = data.session?.user;
+
+    await supabase.from("projects").insert({
+      title,
+      description,
+      price,
+      status: role === "admin" ? "approved" : "pending",
+      created_by: user?.id,
+    });
+
+    router.push("/projects");
+  };
+
   return (
     <main className="container" style={{ maxWidth: "600px" }}>
       <h1>{role === "admin" ? "Admin Upload Project" : "Submit Your Project"}</h1>
 
-      <p style={{ color: "#9ca3af", marginTop: "8px" }}>
-        {role === "admin"
-          ? "Projects publish instantly."
-          : "Projects require admin approval."}
-      </p>
-
       <form
+        onSubmit={handleSubmit}
         style={{
           marginTop: "20px",
           display: "flex",
@@ -50,12 +66,10 @@ export default function UploadPage() {
           gap: "14px",
         }}
       >
-        <input type="text" placeholder="Project Title" required />
-        <textarea placeholder="Project Description" required />
-        <input type="text" placeholder="Price (₹)" />
-        <input type="file" />
-
-        <button className="btn" type="submit">
+        <input name="title" placeholder="Project Title" required />
+        <textarea name="description" placeholder="Project Description" required />
+        <input name="price" placeholder="Price (₹)" />
+        <button className="btn">
           {role === "admin" ? "Publish Project" : "Submit for Review"}
         </button>
       </form>
