@@ -6,7 +6,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// ✅ Safety net: ensure profile exists (no duplicates)
+// ✅ Safety net: auto-create profile if missing
 export async function ensureProfile(user: any) {
   if (!user) return;
 
