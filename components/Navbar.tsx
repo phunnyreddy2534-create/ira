@@ -12,43 +12,42 @@ export default function Navbar() {
 
   const [user, setUser] = useState<any>(null);
   const [role, setRole] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const loadUserAndRole = async (sessionUser: any) => {
+    setUser(sessionUser);
+
+    if (!sessionUser) {
+      setRole(null);
+      setLoading(false);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", sessionUser.id)
+      .single();
+
+    if (!error) {
+      setRole(data?.role ?? "user");
+    } else {
+      setRole("user");
+    }
+
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const loadUser = async () => {
-      const { data } = await supabase.auth.getUser();
-      const currentUser = data.user;
-      setUser(currentUser);
+    // ✅ Load persisted session (hard refresh safe)
+    supabase.auth.getSession().then(({ data }) => {
+      loadUserAndRole(data.session?.user || null);
+    });
 
-      if (currentUser) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("role")
-          .eq("id", currentUser.id)
-          .single();
-
-        setRole(profile?.role || "user");
-      } else {
-        setRole(null);
-      }
-    };
-
-    loadUser();
-
+    // ✅ Listen for auth changes
     const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setUser(session?.user || null);
-
-        if (session?.user) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("role")
-            .eq("id", session.user.id)
-            .single();
-
-          setRole(profile?.role || "user");
-        } else {
-          setRole(null);
-        }
+      (_event, session) => {
+        loadUserAndRole(session?.user || null);
       }
     );
 
@@ -93,6 +92,9 @@ export default function Navbar() {
     await supabase.auth.signOut();
     router.push("/");
   };
+
+  // ⛔ Prevent flicker until auth is resolved
+  if (loading) return null;
 
   return (
     <motion.nav
