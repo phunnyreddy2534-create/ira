@@ -36,7 +36,9 @@ export default function AdminPage() {
     checkAdmin();
   }, [router]);
 
-  if (!allowed) return null;
+ if (!allowed) {
+  return <p className="container">Checking permissions...</p>;
+}
 
   return (
     <main className="container">
