@@ -2,42 +2,33 @@
 
 import { supabase } from "../../lib/supabaseClient";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 
 export default function AdminPage() {
-  const [allowed, setAllowed] = useState(false);
-  const router = useRouter();
+  const [projects, setProjects] = useState<any[]>([]);
 
   useEffect(() => {
-    const verify = async () => {
-      const { data } = await supabase.auth.getSession();
-      const user = data.session?.user;
+    load();
+  }, []);
 
-      if (!user) {
-        router.replace("/");
-        return;
-      }
+  const load = async () => {
+    const { data } = await supabase
+      .from("projects")
+      .select("*")
+      .order("created_at", { ascending: false });
 
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", user.id)
-        .single();
+    setProjects(data || []);
+  };
 
-      if (profile?.role !== "admin") {
-        router.replace("/");
-      } else {
-        setAllowed(true);
-      }
-    };
+  const approve = async (id: string) => {
+    await supabase.from("projects").update({ status: "approved" }).eq("id", id);
+    load();
+  };
 
-    verify();
-  }, [router]);
-
-  if (!allowed) {
-    return <p className="container">Checking permissions…</p>;
-  }
+  const remove = async (id: string) => {
+    await supabase.from("projects").delete().eq("id", id);
+    load();
+  };
 
   return (
     <main className="container">
@@ -45,12 +36,24 @@ export default function AdminPage() {
         Admin Dashboard
       </motion.h1>
 
-      <div className="grid" style={{ marginTop: "24px" }}>
-        <div className="card">📦 All Projects</div>
-        <div className="card">⏳ Pending Approvals</div>
-        <div className="card">📰 Manage News</div>
-        <div className="card">👥 Users</div>
-      </div>
+      {projects.map((p) => (
+        <div key={p.id} className="card" style={{ marginTop: 16 }}>
+          <strong>{p.title}</strong>
+          <p>{p.description}</p>
+          <p>Status: {p.status}</p>
+
+          <div style={{ marginTop: 10, display: "flex", gap: 10 }}>
+            {p.status !== "approved" && (
+              <button className="btn" onClick={() => approve(p.id)}>
+                Approve
+              </button>
+            )}
+            <button className="btn" onClick={() => remove(p.id)}>
+              Delete
+            </button>
+          </div>
+        </div>
+      ))}
     </main>
   );
 }
