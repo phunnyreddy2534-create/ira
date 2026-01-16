@@ -9,16 +9,46 @@ import { supabase } from "../lib/supabaseClient";
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
+
   const [user, setUser] = useState<any>(null);
+  const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user);
-    });
+    const loadUser = async () => {
+      const { data } = await supabase.auth.getUser();
+      const currentUser = data.user;
+      setUser(currentUser);
+
+      if (currentUser) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", currentUser.id)
+          .single();
+
+        setRole(profile?.role || "user");
+      } else {
+        setRole(null);
+      }
+    };
+
+    loadUser();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      async (_event, session) => {
         setUser(session?.user || null);
+
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("role")
+            .eq("id", session.user.id)
+            .single();
+
+          setRole(profile?.role || "user");
+        } else {
+          setRole(null);
+        }
       }
     );
 
@@ -27,7 +57,7 @@ export default function Navbar() {
     };
   }, []);
 
-  const isAdmin = user?.email?.endsWith("@admin.com");
+  const isAdmin = role === "admin";
 
   const NavLink = ({ href, label }: { href: string; label: string }) => {
     const active = pathname === href;
@@ -91,7 +121,6 @@ export default function Navbar() {
         <NavLink href="/news" label="News" />
 
         {user && <NavLink href="/upload" label="Upload" />}
-
         {isAdmin && <NavLink href="/admin" label="Admin" />}
 
         {!user && (
