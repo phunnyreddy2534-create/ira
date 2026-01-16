@@ -5,46 +5,40 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function UploadPage() {
-  const [user, setUser] = useState<any>(null);
-  const [role, setRole] = useState<"admin" | "user">("user");
+  const [role, setRole] = useState<"admin" | "user" | null>(null);
   const router = useRouter();
 
   useEffect(() => {
     const load = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { data } = await supabase.auth.getSession();
+      const user = data.session?.user;
 
       if (!user) {
-        router.push("/auth/login");
+        router.replace("/auth/login");
         return;
       }
 
-      setUser(user);
-
-      const { data } = await supabase
+      const { data: profile } = await supabase
         .from("profiles")
         .select("role")
         .eq("id", user.id)
         .single();
 
-      setRole(data?.role === "admin" ? "admin" : "user");
+      setRole(profile?.role === "admin" ? "admin" : "user");
     };
 
     load();
   }, [router]);
 
-  if (!user) return null;
-
-  const isAdmin = role === "admin";
+  if (!role) return null;
 
   return (
     <main className="container" style={{ maxWidth: "600px" }}>
-      <h1>{isAdmin ? "Admin Upload Project" : "Submit Your Project"}</h1>
+      <h1>{role === "admin" ? "Admin Upload Project" : "Submit Your Project"}</h1>
 
       <p style={{ color: "#9ca3af", marginTop: "8px" }}>
-        {isAdmin
-          ? "Projects published instantly."
+        {role === "admin"
+          ? "Projects publish instantly."
           : "Projects require admin approval."}
       </p>
 
@@ -62,7 +56,7 @@ export default function UploadPage() {
         <input type="file" />
 
         <button className="btn" type="submit">
-          {isAdmin ? "Publish Project" : "Submit for Review"}
+          {role === "admin" ? "Publish Project" : "Submit for Review"}
         </button>
       </form>
     </main>
