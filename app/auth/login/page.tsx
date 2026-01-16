@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { supabase } from "../../../lib/supabaseClient";
+import { supabase, ensureProfile } from "../../../lib/supabaseClient";
 import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
@@ -13,7 +13,7 @@ export default function LoginPage() {
     const email = e.target.email.value;
     const password = e.target.password.value;
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -23,8 +23,10 @@ export default function LoginPage() {
       return;
     }
 
-    // ✅ redirect after login
-    router.push("/");
+    // ✅ ensure profile exists
+    await ensureProfile(data.user);
+
+    router.replace("/");
   };
 
   return (
