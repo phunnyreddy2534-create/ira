@@ -14,10 +14,12 @@ export default function ProjectPreview({ params }: Props) {
   const [owned, setOwned] = useState(false);
   const [loading, setLoading] = useState(true);
 
+  // ✅ Ownership check (created OR paid)
   useEffect(() => {
     const checkOwnership = async () => {
       const { data } = await supabase.auth.getSession();
       const user = data.session?.user;
+
       if (!user) {
         setLoading(false);
         return;
@@ -25,11 +27,11 @@ export default function ProjectPreview({ params }: Props) {
 
       const { data: order } = await supabase
         .from("orders")
-        .select("id")
+        .select("id,status")
         .eq("project_id", params.id)
         .eq("user_id", user.id)
-        .eq("status", "paid")
-        .single();
+        .in("status", ["created", "paid"])
+        .maybeSingle();
 
       setOwned(!!order);
       setLoading(false);
@@ -38,6 +40,7 @@ export default function ProjectPreview({ params }: Props) {
     checkOwnership();
   }, [params.id]);
 
+  // ✅ Server-side order creation (RLS-safe)
   const handleBuy = async () => {
     const { data } = await supabase.auth.getSession();
     const user = data.session?.user;
@@ -47,22 +50,27 @@ export default function ProjectPreview({ params }: Props) {
       return;
     }
 
-    const { data: existing } = await supabase
-      .from("orders")
-      .select("id")
-      .eq("project_id", params.id)
-      .eq("user_id", user.id)
-      .single();
+    const res = await fetch("/api/orders/create", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        projectId: params.id,
+        amount: 10,
+      }),
+    });
 
-    if (existing) {
-      setOwned(true);
+    if (!res.ok) {
+      alert("Unable to create order.");
       return;
     }
 
     setOwned(true);
-    alert("Purchase successful. Download unlocked.");
+    alert("Order created. Download unlocked.");
   };
 
+  // ⚠️ TEMPORARY (Phase 6B will secure this)
   const handleDownload = async () => {
     const { data } = await supabase.auth.getSession();
     const user = data.session?.user;
@@ -87,12 +95,6 @@ export default function ProjectPreview({ params }: Props) {
       alert("Access denied.");
       return;
     }
-
-    // Log download
-    await supabase.from("downloads").insert({
-      user_id: user.id,
-      project_id: params.id,
-    });
 
     const url = URL.createObjectURL(file);
     const a = document.createElement("a");
