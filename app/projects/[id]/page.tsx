@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { supabase } from "../../../lib/supabaseClient";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 interface Props {
   params: { id: string };
@@ -10,6 +11,32 @@ interface Props {
 
 export default function ProjectPreview({ params }: Props) {
   const router = useRouter();
+  const [owned, setOwned] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const checkOwnership = async () => {
+      const { data } = await supabase.auth.getSession();
+      const user = data.session?.user;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      const { data: order } = await supabase
+        .from("orders")
+        .select("id")
+        .eq("project_id", params.id)
+        .eq("user_id", user.id)
+        .eq("status", "paid")
+        .single();
+
+      setOwned(!!order);
+      setLoading(false);
+    };
+
+    checkOwnership();
+  }, [params.id]);
 
   const handleBuy = async () => {
     const { data } = await supabase.auth.getSession();
@@ -20,7 +47,6 @@ export default function ProjectPreview({ params }: Props) {
       return;
     }
 
-    // Check if already purchased
     const { data: existing } = await supabase
       .from("orders")
       .select("id")
@@ -29,11 +55,10 @@ export default function ProjectPreview({ params }: Props) {
       .single();
 
     if (existing) {
-      alert("You already own this project.");
+      setOwned(true);
       return;
     }
 
-    // Create order (payment gateway will come later)
     await supabase.from("orders").insert({
       project_id: params.id,
       user_id: user.id,
@@ -41,8 +66,50 @@ export default function ProjectPreview({ params }: Props) {
       status: "paid",
     });
 
+    setOwned(true);
     alert("Purchase successful. Download unlocked.");
   };
+
+  const handleDownload = async () => {
+    const { data } = await supabase.auth.getSession();
+    const user = data.session?.user;
+    if (!user) return;
+
+    const { data: project } = await supabase
+      .from("projects")
+      .select("file_path")
+      .eq("id", params.id)
+      .single();
+
+    if (!project?.file_path) {
+      alert("File not available yet.");
+      return;
+    }
+
+    const { data: file, error } = await supabase.storage
+      .from("project-files")
+      .download(project.file_path);
+
+    if (error) {
+      alert("Access denied.");
+      return;
+    }
+
+    // Log download
+    await supabase.from("downloads").insert({
+      user_id: user.id,
+      project_id: params.id,
+    });
+
+    const url = URL.createObjectURL(file);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "project.zip";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  if (loading) return null;
 
   return (
     <main className="container">
@@ -74,14 +141,25 @@ export default function ProjectPreview({ params }: Props) {
         <li>✔ Setup Guide</li>
       </motion.ul>
 
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        className="btn"
-        style={{ marginTop: "28px" }}
-        onClick={handleBuy}
-      >
-        Buy & Download
-      </motion.button>
+      {!owned ? (
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          className="btn"
+          style={{ marginTop: "28px" }}
+          onClick={handleBuy}
+        >
+          Buy & Download
+        </motion.button>
+      ) : (
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          className="btn"
+          style={{ marginTop: "28px" }}
+          onClick={handleDownload}
+        >
+          Download Project
+        </motion.button>
+      )}
     </main>
   );
 }
