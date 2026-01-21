@@ -6,7 +6,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// ✅ Lightweight slug generator (no dependency)
+// ✅ Internal slug generator (NO dependencies)
 function makeSlug(text: string) {
   return text
     .toLowerCase()
@@ -17,7 +17,7 @@ function makeSlug(text: string) {
 }
 
 export async function GET(req: Request) {
-  // 🔐 Cron protection
+  // 🔐 Protect cron endpoint
   const auth = req.headers.get("authorization");
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return new NextResponse("Unauthorized", { status: 401 });
@@ -36,11 +36,11 @@ export async function GET(req: Request) {
       const articles = json.articles || [];
 
       for (const article of articles) {
-        if (!article.title || !article.url) continue;
+        if (!article?.title || !article?.url) continue;
 
         const slug = makeSlug(article.title);
 
-        // 🚫 Avoid duplicates
+        // 🚫 Skip duplicates
         const { data: exists } = await supabase
           .from("news")
           .select("id")
@@ -67,6 +67,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    console.error(error);
     return NextResponse.json(
       { error: "News fetch failed" },
       { status: 500 }
