@@ -1,4 +1,9 @@
-import { supabase } from "../../lib/supabaseClient";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default async function NewsPage() {
   const { data } = await supabase
@@ -15,8 +20,7 @@ export default async function NewsPage() {
         {data?.map((n) => (
           <a
             key={n.id}
-            href={n.source_url}
-            target="_blank"
+            href={`/news/${n.slug}`}
             className="card"
           >
             <strong>{n.title}</strong>
