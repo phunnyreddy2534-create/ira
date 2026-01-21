@@ -6,7 +6,6 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// ✅ Internal slug generator (NO external deps)
 function makeSlug(text: string) {
   return text
     .toLowerCase()
